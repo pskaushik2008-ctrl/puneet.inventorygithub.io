@@ -1,4 +1,6 @@
-// Cache commonly used DOM elements
+// Grocery Inventory Management (Static Version)
+// This file works on GitHub Pages because it uses localStorage (no backend API).
+
 const itemForm = document.getElementById("itemForm");
 const itemIdInput = document.getElementById("itemId");
 const nameInput = document.getElementById("name");
@@ -9,30 +11,21 @@ const cancelBtn = document.getElementById("cancelBtn");
 const messageBox = document.getElementById("message");
 const tableBody = document.getElementById("itemsTableBody");
 
-// Store current items from backend
+const STORAGE_KEY = "grocery_inventory_items";
+const COUNTER_KEY = "grocery_inventory_last_id";
+
 let items = [];
 
-// Show success or error messages on screen
 function showMessage(text, type = "success") {
   messageBox.textContent = text;
   messageBox.className = `message ${type}`;
 
-  // Auto clear message after 3 seconds
   setTimeout(() => {
     messageBox.textContent = "";
     messageBox.className = "message";
   }, 3000);
 }
 
-// Reset form to "Add New Item" mode
-function resetForm() {
-  itemForm.reset();
-  itemIdInput.value = "";
-  formTitle.textContent = "Add New Item";
-  cancelBtn.classList.add("hidden");
-}
-
-// Basic frontend validation before sending data to backend
 function validateForm(name, quantity, price) {
   if (!name || name.trim().length < 2) {
     return "Item name must have at least 2 characters.";
@@ -51,25 +44,29 @@ function validateForm(name, quantity, price) {
   return null;
 }
 
-// Fetch all items from backend and render table
-async function loadItems() {
-  try {
-    const response = await fetch("/api/items");
-    const data = await response.json();
-
-    if (!response.ok) {
-      const detailedMessage = data.error ? `${data.message} (${data.error})` : data.message;
-      throw new Error(detailedMessage || "Failed to load items.");
-    }
-
-    items = data;
-    renderTable();
-  } catch (error) {
-    showMessage(error.message, "error");
-  }
+function loadFromStorage() {
+  const storedItems = localStorage.getItem(STORAGE_KEY);
+  items = storedItems ? JSON.parse(storedItems) : [];
 }
 
-// Render items table rows
+function saveToStorage() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
+function getNextId() {
+  const lastId = Number(localStorage.getItem(COUNTER_KEY) || "0");
+  const nextId = lastId + 1;
+  localStorage.setItem(COUNTER_KEY, String(nextId));
+  return nextId;
+}
+
+function resetForm() {
+  itemForm.reset();
+  itemIdInput.value = "";
+  formTitle.textContent = "Add New Item";
+  cancelBtn.classList.add("hidden");
+}
+
 function renderTable() {
   if (items.length === 0) {
     tableBody.innerHTML = `
@@ -98,7 +95,6 @@ function renderTable() {
     .join("");
 }
 
-// Fill form with item values to edit
 function editItem(id) {
   const item = items.find((currentItem) => currentItem.id === id);
   if (!item) {
@@ -110,36 +106,21 @@ function editItem(id) {
   nameInput.value = item.name;
   quantityInput.value = item.quantity;
   priceInput.value = item.price;
-
   formTitle.textContent = `Edit Item #${item.id}`;
   cancelBtn.classList.remove("hidden");
 }
 
-// Delete item from backend
-async function deleteItem(id) {
+function deleteItem(id) {
   const confirmed = window.confirm("Are you sure you want to delete this item?");
   if (!confirmed) return;
 
-  try {
-    const response = await fetch(`/api/items/${id}`, {
-      method: "DELETE"
-    });
-    const data = await response.json();
-
-    if (!response.ok) {
-      const detailedMessage = data.error ? `${data.message} (${data.error})` : data.message;
-      throw new Error(detailedMessage || "Failed to delete item.");
-    }
-
-    showMessage(data.message || "Item deleted successfully.");
-    await loadItems();
-  } catch (error) {
-    showMessage(error.message, "error");
-  }
+  items = items.filter((item) => item.id !== id);
+  saveToStorage();
+  renderTable();
+  showMessage("Item deleted successfully.");
 }
 
-// Handle add/update form submit
-itemForm.addEventListener("submit", async (event) => {
+itemForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
   const id = itemIdInput.value;
@@ -153,43 +134,33 @@ itemForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  const payload = {
-    name,
-    quantity: Number(quantity),
-    price: Number(price)
-  };
-
-  try {
-    const isEditMode = Boolean(id);
-    const endpoint = isEditMode ? `/api/items/${id}` : "/api/items";
-    const method = isEditMode ? "PUT" : "POST";
-
-    const response = await fetch(endpoint, {
-      method,
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      const detailedMessage = data.error ? `${data.message} (${data.error})` : data.message;
-      throw new Error(detailedMessage || "Request failed.");
-    }
-
-    showMessage(data.message || "Saved successfully.");
-    resetForm();
-    await loadItems();
-  } catch (error) {
-    showMessage(error.message, "error");
+  if (id) {
+    items = items.map((item) =>
+      item.id === Number(id)
+        ? { ...item, name, quantity: Number(quantity), price: Number(price) }
+        : item
+    );
+    showMessage("Item updated successfully.");
+  } else {
+    const newItem = {
+      id: getNextId(),
+      name,
+      quantity: Number(quantity),
+      price: Number(price)
+    };
+    items.unshift(newItem);
+    showMessage("Item added successfully.");
   }
+
+  saveToStorage();
+  renderTable();
+  resetForm();
 });
 
-// Cancel edit mode
 cancelBtn.addEventListener("click", () => {
   resetForm();
 });
 
-// Load items when page opens
-loadItems();
+// Initialize app on page load
+loadFromStorage();
+renderTable();

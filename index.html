@@ -3,12 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Grocery Inventory Management</title>
+    <title>Grocery Inventory Management (Static)</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div class="container">
       <h1>Grocery Inventory Management</h1>
+
+      <!-- This note explains why this version works on GitHub Pages -->
+      <p class="info-note">
+        Static mode: data is saved in your browser using localStorage.
+      </p>
 
       <!-- Message area for success/error notifications -->
       <p id="message" class="message"></p>
@@ -37,7 +42,7 @@
           </div>
 
           <div class="button-group">
-            <button type="submit" id="saveBtn">Save Item</button>
+            <button type="submit">Save Item</button>
             <button type="button" id="cancelBtn" class="secondary hidden">Cancel Edit</button>
           </div>
         </form>
@@ -46,7 +51,7 @@
       <div class="card">
         <h2>Current Stock</h2>
         <div class="table-wrapper">
-          <table id="itemsTable">
+          <table>
             <thead>
               <tr>
                 <th>ID</th>
@@ -56,9 +61,7 @@
                 <th>Actions</th>
               </tr>
             </thead>
-            <tbody id="itemsTableBody">
-              <!-- JavaScript will render rows here -->
-            </tbody>
+            <tbody id="itemsTableBody"></tbody>
           </table>
         </div>
       </div>
